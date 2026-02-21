@@ -1,0 +1,124 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client" // Add this line
+}
+
+enum Role {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+}
+
+enum JobStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CLOSED
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  REMOTE
+}
+
+enum ExperienceLevel {
+  ENTRY
+  JUNIOR
+  MID
+  SENIOR
+  LEAD
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  password      String
+  firstName     String
+  lastName      String
+  role          Role           @default(CANDIDATE)
+  isVerified    Boolean        @default(false)
+  isSuspended   Boolean        @default(false)
+  verificationToken String?
+  resetPasswordToken String?
+  resetPasswordExpires DateTime?
+  failedLoginAttempts Int      @default(0)
+  lockUntil     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  jobs          Job[]          @relation("EmployerJobs")
+  approvedJobs  Job[]          @relation("ApprovedJobs")
+  applications  Application[]
+  refreshTokens RefreshToken[]
+}
+
+model Job {
+  id              String         @id @default(cuid())
+  title           String
+  description     String         @db.Text
+  responsibilities String?       @db.Text
+  requirements    String?        @db.Text
+  benefits        String?        @db.Text
+  salaryMin       Float?
+  salaryMax       Float?
+  location        String
+  type            JobType
+  experience      ExperienceLevel
+  status          JobStatus      @default(PENDING_APPROVAL)
+  viewCount       Int            @default(0)
+
+  employerId      String
+  approvedBy      String?
+  approvedAt      DateTime?
+
+  employer        User           @relation("EmployerJobs", fields: [employerId], references: [id])
+  approver        User?          @relation("ApprovedJobs", fields: [approvedBy], references: [id])
+  applications    Application[]
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Application {
+  id            String              @id @default(cuid())
+  coverLetter   String?             @db.Text
+  resumeUrl     String
+  status        ApplicationStatus   @default(PENDING)
+  notes         String?             @db.Text
+
+  jobId         String
+  candidateId   String
+
+  job           Job                 @relation(fields: [jobId], references: [id])
+  candidate     User                @relation(fields: [candidateId], references: [id])
+
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@unique([jobId, candidateId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
