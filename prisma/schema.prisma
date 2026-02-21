@@ -2,11 +2,11 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 generator client {
   provider = "prisma-client-js"
-  // Remove the "output" line or comment it out
-  // output   = "../src/generated/client"
 }
+
 
 enum Role {
   CANDIDATE
