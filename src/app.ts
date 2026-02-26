@@ -8,35 +8,37 @@ import applicationRoutes from './routes/application.routes';
 const app = express();
 
 // ======================
-// Middleware
+// CORS Configuration
 // ======================
+const corsOptions = {
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://prohire-navy.vercel.app",
+    "https://prohire.vercel.app",
+    /\.vercel\.app$/  // Allows all Vercel preview deployments
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 204
+};
 
-// Enable CORS FIRST
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "https://prohire-navy.vercel.app",
-      "https://prohire.vercel.app",
-      /\.vercel\.app$/  // This allows all Vercel preview deployments
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-);
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
-// Handle preflight requests
-app.options('*', cors());
+// Explicitly handle preflight OPTIONS requests
+app.options('*', cors(corsOptions));
 
+// ======================
+// Other Middleware
+// ======================
 app.use(express.json());
 app.use(morgan('dev'));
 
 // ======================
 // Health Check
 // ======================
-
 app.get('/api/health', (_req, res) => {
   res.status(200).json({
     success: true,
@@ -47,15 +49,23 @@ app.get('/api/health', (_req, res) => {
 // ======================
 // Routes
 // ======================
-
 app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 
 // ======================
+// 404 Handler
+// ======================
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found'
+  });
+});
+
+// ======================
 // Global Error Handler
 // ======================
-
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('🔥 Error:', err);
 
