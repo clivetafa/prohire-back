@@ -5,6 +5,9 @@ import authRoutes from './routes/auth.routes';
 import jobRoutes from './routes/job.routes';
 import applicationRoutes from './routes/application.routes';
 
+// ======================
+// Initialize App FIRST
+// ======================
 const app = express();
 
 // ======================
@@ -27,7 +30,16 @@ const corsOptions = {
 // Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Explicitly handle preflight OPTIONS requests
+// Explicit OPTIONS handler for register (add this BEFORE other routes)
+app.options('/api/auth/register', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://prohire-navy.vercel.app');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(204);
+});
+
+// Handle preflight for all routes
 app.options('*', cors(corsOptions));
 
 // ======================
@@ -53,40 +65,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 
-
-// Add this right after your other routes, before the 404 handler
-app.get('/api/debug/routes', (req, res) => {
-  const routes: any[] = [];
-  
-  // Function to extract routes from Express app
-  const extractRoutes = (stack: any[], basePath = '') => {
-    stack.forEach((layer) => {
-      if (layer.route) {
-        // Direct routes
-        const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
-        routes.push({
-          path: basePath + layer.route.path,
-          methods
-        });
-      } else if (layer.name === 'router' && layer.handle.stack) {
-        // Router middleware
-        const routerPath = basePath + (layer.regexp.source
-          .replace('\\/?(?=\\/|$)', '')
-          .replace(/\\\//g, '/')
-          .replace(/\(\?:\(\[\^\\\/\]\+\?\)\)/g, ':param') || '');
-        extractRoutes(layer.handle.stack, routerPath);
-      }
-    });
-  };
-
-  extractRoutes(app._router.stack);
-  
-  res.json({
-    success: true,
-    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
-  });
-});
-
 // ======================
 // 404 Handler
 // ======================
@@ -102,15 +80,6 @@ app.use('*', (req, res) => {
 // ======================
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('🔥 Error:', err);
-
-  // Handle CORS errors specifically
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
-      success: false,
-      message: 'CORS error: Origin not allowed',
-    });
-  }
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal Server Error',
@@ -118,4 +87,3 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 export default app;
-// Force redeploy - $(Get-Date)
