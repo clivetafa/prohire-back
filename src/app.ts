@@ -53,6 +53,40 @@ app.use('/api/auth', authRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 
+
+// Add this right after your other routes, before the 404 handler
+app.get('/api/debug/routes', (req, res) => {
+  const routes: any[] = [];
+  
+  // Function to extract routes from Express app
+  const extractRoutes = (stack: any[], basePath = '') => {
+    stack.forEach((layer) => {
+      if (layer.route) {
+        // Direct routes
+        const methods = Object.keys(layer.route.methods).join(', ').toUpperCase();
+        routes.push({
+          path: basePath + layer.route.path,
+          methods
+        });
+      } else if (layer.name === 'router' && layer.handle.stack) {
+        // Router middleware
+        const routerPath = basePath + (layer.regexp.source
+          .replace('\\/?(?=\\/|$)', '')
+          .replace(/\\\//g, '/')
+          .replace(/\(\?:\(\[\^\\\/\]\+\?\)\)/g, ':param') || '');
+        extractRoutes(layer.handle.stack, routerPath);
+      }
+    });
+  };
+
+  extractRoutes(app._router.stack);
+  
+  res.json({
+    success: true,
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
+  });
+});
+
 // ======================
 // 404 Handler
 // ======================
