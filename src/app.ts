@@ -5,42 +5,41 @@ import authRoutes from './routes/auth.routes';
 import jobRoutes from './routes/job.routes';
 import applicationRoutes from './routes/application.routes';
 
-// ======================
-// Initialize App FIRST
-// ======================
 const app = express();
 
 // ======================
 // CORS Configuration
 // ======================
-const corsOptions = {
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "https://prohire-navy.vercel.app",
-    "https://prohire.vercel.app",
-    /\.vercel\.app$/  // Allows all Vercel preview deployments
-  ],
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  /\.vercel\.app$/,   // all Vercel preview + production deployments
+];
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin) return callback(null, true);
+
+    const isAllowed = allowedOrigins.some((allowed) =>
+      allowed instanceof RegExp ? allowed.test(origin) : allowed === origin
+    );
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`🚫 CORS blocked: ${origin}`);
+      callback(new Error(`CORS policy: origin ${origin} not allowed`));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
 };
 
-// Apply CORS middleware
 app.use(cors(corsOptions));
-
-// Explicit OPTIONS handler for register (add this BEFORE other routes)
-app.options('/api/auth/register', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://prohire-navy.vercel.app');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.sendStatus(204);
-});
-
-// Handle preflight for all routes
-app.options('*', cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight for all routes
 
 // ======================
 // Other Middleware
@@ -68,10 +67,10 @@ app.use('/api/applications', applicationRoutes);
 // ======================
 // 404 Handler
 // ======================
-app.use('*', (req, res) => {
+app.use('*', (_req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
   });
 });
 
