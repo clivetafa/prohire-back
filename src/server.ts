@@ -11,24 +11,36 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌍 Accepting connections on all interfaces`);
 });
 
-// Handle errors
 server.on('error', (error) => {
   console.error('Server error:', error);
 });
 
-// Graceful shutdown
+// ── Prevent crashes from unhandled errors ──────────────────────────────────
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error.message);
+  // Don't exit — keep the server alive
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled Rejection:', reason);
+  // Don't exit — keep the server alive
+});
+
+// ── Graceful shutdown ──────────────────────────────────────────────────────
+
 process.on('SIGTERM', () => {
-  console.log('SIGTERM signal received: closing HTTP server');
+  console.log('SIGTERM received: closing server');
   server.close(() => {
-    console.log('HTTP server closed');
+    console.log('Server closed');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT signal received: closing HTTP server');
+  console.log('SIGINT received: closing server');
   server.close(() => {
-    console.log('HTTP server closed');
+    console.log('Server closed');
     process.exit(0);
   });
 });
