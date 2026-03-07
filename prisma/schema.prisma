@@ -7,6 +7,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// ── Enums ──────────────────────────────────────────────────────────────────
 
 enum Role {
   CANDIDATE
@@ -45,71 +46,174 @@ enum ApplicationStatus {
   REJECTED
 }
 
-model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  password      String
-  firstName     String
-  lastName      String
-  role          Role           @default(CANDIDATE)
-  isVerified    Boolean        @default(false)
-  isSuspended   Boolean        @default(false)
-  verificationToken String?
-  resetPasswordToken String?
-  resetPasswordExpires DateTime?
-  failedLoginAttempts Int      @default(0)
-  lockUntil     DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+// ── Models ─────────────────────────────────────────────────────────────────
 
-  jobs          Job[]          @relation("EmployerJobs")
-  approvedJobs  Job[]          @relation("ApprovedJobs")
-  applications  Application[]
-  refreshTokens RefreshToken[]
+model User {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  password             String
+  firstName            String
+  lastName             String
+  role                 Role      @default(CANDIDATE)
+  isVerified           Boolean   @default(false)
+  isSuspended          Boolean   @default(false)
+
+  // Email verification OTP
+  otpCode              String?
+  otpExpiresAt         DateTime?
+
+  // Password reset
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+
+  // Security
+  failedLoginAttempts  Int       @default(0)
+  lockUntil            DateTime?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relations
+  candidateProfile     CandidateProfile?
+  employerProfile      EmployerProfile?
+  jobs                 Job[]          @relation("EmployerJobs")
+  approvedJobs         Job[]          @relation("ApprovedJobs")
+  applications         Application[]
+  refreshTokens        RefreshToken[]
+}
+
+model CandidateProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  phone             String?
+  location          String?
+  bio               String?  @db.Text
+  portfolioUrl      String?
+  cvUrl             String?  // Cloudinary PDF URL
+  cvPublicId        String?  // Cloudinary public ID for deletion
+  profileCompletion Int      @default(0)
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skills            CandidateSkill[]
+  experience        WorkExperience[]
+  education         Education[]
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model CandidateSkill {
+  id           String           @id @default(cuid())
+  profileId    String
+  name         String
+  level        SkillLevel       @default(INTERMEDIATE)
+
+  profile      CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, name])
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model WorkExperience {
+  id           String           @id @default(cuid())
+  profileId    String
+  jobTitle     String
+  company      String
+  location     String?
+  startDate    DateTime
+  endDate      DateTime?
+  isCurrent    Boolean          @default(false)
+  description  String?          @db.Text
+
+  profile      CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime         @default(now())
+}
+
+model Education {
+  id           String           @id @default(cuid())
+  profileId    String
+  institution  String
+  degree       String
+  fieldOfStudy String?
+  startDate    DateTime
+  endDate      DateTime?
+  isCurrent    Boolean          @default(false)
+  grade        String?
+
+  profile      CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime         @default(now())
+}
+
+model EmployerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  companyName      String?
+  industry         String?
+  companySize      String?
+  website          String?
+  logoUrl          String?
+  logoPublicId     String?
+  description      String?  @db.Text
+  location         String?
+  foundedYear      Int?
+  profileCompletion Int     @default(0)
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Job {
-  id              String         @id @default(cuid())
-  title           String
-  description     String         @db.Text
-  responsibilities String?       @db.Text
-  requirements    String?        @db.Text
-  benefits        String?        @db.Text
-  salaryMin       Float?
-  salaryMax       Float?
-  location        String
-  type            JobType
-  experience      ExperienceLevel
-  status          JobStatus      @default(PENDING_APPROVAL)
-  viewCount       Int            @default(0)
+  id               String          @id @default(cuid())
+  title            String
+  description      String          @db.Text
+  responsibilities String?         @db.Text
+  requirements     String?         @db.Text
+  benefits         String?         @db.Text
+  salaryMin        Float?
+  salaryMax        Float?
+  location         String
+  type             JobType
+  experience       ExperienceLevel
+  status           JobStatus       @default(PENDING_APPROVAL)
+  viewCount        Int             @default(0)
 
-  employerId      String
-  approvedBy      String?
-  approvedAt      DateTime?
+  employerId       String
+  approvedBy       String?
+  approvedAt       DateTime?
 
-  employer        User           @relation("EmployerJobs", fields: [employerId], references: [id])
-  approver        User?          @relation("ApprovedJobs", fields: [approvedBy], references: [id])
-  applications    Application[]
+  employer         User            @relation("EmployerJobs", fields: [employerId], references: [id])
+  approver         User?           @relation("ApprovedJobs", fields: [approvedBy], references: [id])
+  applications     Application[]
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
 
 model Application {
-  id            String              @id @default(cuid())
-  coverLetter   String?             @db.Text
-  resumeUrl     String
-  status        ApplicationStatus   @default(PENDING)
-  notes         String?             @db.Text
+  id          String            @id @default(cuid())
+  coverLetter String?           @db.Text
+  resumeUrl   String
+  status      ApplicationStatus @default(PENDING)
+  notes       String?           @db.Text
 
-  jobId         String
-  candidateId   String
+  jobId       String
+  candidateId String
 
-  job           Job                 @relation(fields: [jobId], references: [id])
-  candidate     User                @relation(fields: [candidateId], references: [id])
+  job         Job               @relation(fields: [jobId], references: [id])
+  candidate   User              @relation(fields: [candidateId], references: [id])
 
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   @@unique([jobId, candidateId])
 }
@@ -121,5 +225,5 @@ model RefreshToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
