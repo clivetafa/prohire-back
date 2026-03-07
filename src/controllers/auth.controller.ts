@@ -1,31 +1,52 @@
-import { Request, Response } from "express";
-import { AuthService } from "../services/auth.service";
+import { Request, Response } from 'express';
+import { AuthService } from '../services/auth.service';
 
 const authService = new AuthService();
 
 export class AuthController {
-  register = async (req: Request, res: Response) => {
-    const result = await authService.register(req.body);
-    res.status(201).json({ success: true, ...result });
-  };
+  async register(req: Request, res: Response) {
+    try {
+      const result = await authService.register(req.body);
+      res.status(201).json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
-  login = async (req: Request, res: Response) => {
-    const result = await authService.login(req.body);
-    res.status(200).json({ success: true, ...result });
-  };
+  async login(req: Request, res: Response) {
+    try {
+      const result = await authService.login(req.body);
+      res.status(200).json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
-  refreshToken = async (req: Request, res: Response) => {
-    const result = await authService.refreshToken(req.body.token);
-    res.status(200).json({ success: true, ...result });
-  };
+  async refreshToken(req: Request, res: Response) {
+    try {
+      const { token } = req.body;
+      const result = await authService.refreshToken(token);
+      res.status(200).json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
-  logout = async (req: Request, res: Response) => {
-    await authService.logout(req.body.refreshToken);
-    res.status(200).json({ success: true, message: "Logged out successfully" });
-  };
+  async getCurrentUser(req: any, res: Response) {
+    try {
+      const user = await authService.getCurrentUser(req.user.userId);
+      res.status(200).json({ success: true, user });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
-  getMe = async (req: Request, res: Response) => {
-    const user = await authService.getCurrentUser(req.user!.userId);
-    res.status(200).json({ success: true, user });
-  };
+  async logout(req: any, res: Response) {
+    try {
+      const result = await authService.logout(req.user.userId);
+      res.status(200).json({ success: true, ...result });
+    } catch (error: any) {
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
